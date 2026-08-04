@@ -148,12 +148,57 @@ function updateInfoPanel(flight) {
         <div class="info-row"><span class="info-label">Speed</span> <span class="info-value">${velocityKnots} kts</span></div>
         <div class="info-row"><span class="info-label">Heading</span> <span class="info-value">${(flight.heading || 0).toFixed(0)}°</span></div>
         <div class="info-row"><span class="info-label">Last Updated</span> <span class="info-value">${flight.last_updated} UTC</span></div>
-        <div style="margin-top: 20px;">
-            <button class="filter-btn btn-apply" onclick="drawHistoryTrack('${flight.icao24}')" style="width: 100%;">Show Full History</button>
+        
+        <div class="history-section">
+            <div class="info-row" style="margin-top: 15px; margin-bottom: 5px;">
+                <span class="info-label">History Date</span>
+            </div>
+            <div class="history-inputs">
+                <input type="date" id="history-date-input" class="history-date-picker">
+                <button class="filter-btn btn-apply" id="btn-search-history" onclick="onSearchHistoryClick('${flight.icao24}')">Arat</button>
+            </div>
+            <div style="margin-top: 10px;">
+                <button class="filter-btn btn-apply" onclick="drawHistoryTrack('${flight.icao24}')" style="width: 100%;">Show History</button>
+            </div>
         </div>
     `;
     document.getElementById("info-content").innerHTML = html;
     panel.style.display = "block";
+}
+
+async function onSearchHistoryClick(icao24) {
+    const dateInput = document.getElementById("history-date-input");
+    const selectedDate = dateInput.value;
+
+    if (!selectedDate) {
+        alert("Please select a date!");
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/flights/${icao24}/history-by-date?date=${selectedDate}`);
+        if (!response.ok) throw new Error("HTTP " + response.status);
+        const data = await response.json();
+        
+        if (currentTrackLayer) map.removeLayer(currentTrackLayer);
+        
+        if (data.path && data.path.length > 1) {
+            currentTrackLayer = L.layerGroup();
+            for (let i = 0; i < data.path.length - 1; i++) {
+                const p1 = data.path[i]; 
+                const p2 = data.path[i+1];
+                const segment = L.polyline([[p1[0], p1[1]], [p2[0], p2[1]]], {
+                    color: getAltitudeColor(p1[2]), weight: 3, opacity: 0.8, smoothFactor: 1
+                });
+                currentTrackLayer.addLayer(segment);
+            }
+            currentTrackLayer.addTo(map);
+        } else {
+            alert(`${selectedDate} date for ${icao24} flight not found.`);
+        }
+    } catch (error) {
+        console.error("Error loading history track:", error);
+    }
 }
 
 const searchInput = document.getElementById("search-input");

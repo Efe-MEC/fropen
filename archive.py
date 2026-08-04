@@ -16,9 +16,9 @@ def archive_yesterday_data():
     start_of_yesterday = datetime(yesterday.year, yesterday.month, yesterday.day, tzinfo=timezone.utc)
     start_of_today = start_of_yesterday + timedelta(days=1)
     
-    year_str = start_of_yesterday.strftime("%Y")
-    month_str = start_of_yesterday.strftime("%m")
-    day_str = start_of_yesterday.strftime("%d")
+    year_str = f"{start_of_yesterday.year}"
+    month_str = f"{start_of_yesterday.month}"
+    day_str = f"{start_of_yesterday.day}"
     
     partition_dir = os.path.join(ARCHIVE_BASE_DIR, f"year={year_str}", f"month={month_str}", f"day={day_str}")
     

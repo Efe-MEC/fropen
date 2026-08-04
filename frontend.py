@@ -185,6 +185,82 @@ def get_flight_track(icao24: str):
         "path": path
     }
 
+import pandas as pd
+from datetime import datetime, timezone
+
+@app.get("/api/flights/{icao24}/history-by-date")
+def get_flight_history_by_date(icao24: str, date: str = Query(...)):
+    try:
+        target_date = datetime.strptime(date, "%Y-%m-%d").date()
+    except ValueError:
+        return {"icao24": icao24, "path": [], "error": "Invalid date format. Use YYYY-MM-DD"}
+    
+    today_date = datetime.now(timezone.utc).date()
+    path = []
+
+    if target_date == today_date:
+        start_of_day = datetime(target_date.year, target_date.month, target_date.day, tzinfo=timezone.utc)
+        start_ts = start_of_day.timestamp()
+        
+        cursor = raw_flights.find({"icao24": icao24, "timestamp": {"$gte": start_ts}}).sort("timestamp", 1)
+        for doc in cursor:
+            lat = doc.get("latitude")
+            lon = doc.get("longitude")
+            alt = doc.get("altitude", 0.0) or 0.0
+            if lat is not None and lon is not None:
+                path.append([float(lat), float(lon), float(alt)])
+    else:
+        partition_candidates = [
+            os.path.join(
+                "/app/archive",
+                f"year={target_date.year}",
+                f"month={target_date.month}",
+                f"day={target_date.day}",
+            ),
+            os.path.join(
+                "/app/archive",
+                f"year={target_date.year}",
+                f"month={target_date.strftime('%m')}",
+                f"day={target_date.strftime('%d')}",
+            ),
+        ]
+
+        for partition_dir in partition_candidates:
+            print(f"[API] Searching archive: {partition_dir} (Aircraft: {icao24})")
+
+            if not os.path.exists(partition_dir):
+                continue
+
+            parquet_files = [os.path.join(partition_dir, f) for f in os.listdir(partition_dir) if f.endswith(".parquet")]
+
+            for file_path in parquet_files:
+                try:
+                    df = pd.read_parquet(file_path)
+                    if "icao24" in df.columns:
+                        filtered_df = df[df["icao24"] == icao24]
+                        if not filtered_df.empty:
+                            filtered_df = filtered_df.sort_values("timestamp")
+                            for _, row in filtered_df.iterrows():
+                                lat = row.get("latitude")
+                                lon = row.get("longitude")
+                                alt = row.get("altitude", 0.0) or 0.0
+                                if pd.notna(lat) and pd.notna(lon):
+                                    path.append([float(lat), float(lon), float(alt) if pd.notna(alt) else 0.0])
+                except Exception as e:
+                    print(f"[API] Error reading Parquet file ({file_path}): {e}")
+
+            if path:
+                break
+
+        if not path:
+            print(f"[API] Archive directory not found: {partition_candidates[0]}")
+
+    return {
+        "icao24": icao24,
+        "date": date,
+        "path": path
+    }
+
 @app.get("/api/flights/{icao24}/history")
 def get_flight_history(icao24: str):
     cursor = raw_flights.find({"icao24": icao24}).sort("timestamp", 1)

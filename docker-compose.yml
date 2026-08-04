@@ -169,6 +169,8 @@ services:
         condition: service_healthy
     networks:
       - data-pipeline-net
+    volumes:
+      - ./archive:/app/archive:ro
     read_only: true
     security_opt:
       - no-new-privileges:true
@@ -178,7 +180,7 @@ services:
   flight-archiver:
     build: .
     container_name: flight_archiver
-    command: python -u archiver.py
+    command: python -u archive.py
     restart: on-failure
     environment:
       - MONGO_URI=${MONGO_URI}
@@ -187,8 +189,7 @@ services:
     networks:
       - data-pipeline-net
     volumes:
-      - parquet_archives:/app/archive
+      - ./archive:/app/archive
 
 volumes:
   mongo_data:
-  parquet_archives:
