@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+pymongo
+kafka-python
+requests
+websockets
+aiokafka
+pandas
+pyarrow
+schedule

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flight Radar Open</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+    <div id="map"></div>
+    
+    <div id="topbar">
+        <div id="title">Flight Radar Open</div>
+        <div id="status">
+            <span id="dot" class="status-dot"></span>
+            <span id="connection">Connecting...</span>
+        </div>
+        
+        <div class="switch-container">
+            <input type="checkbox" id="mode-checkbox">
+            <label for="mode-checkbox" class="toggle-wrapper">
+                <div class="toggle-slider"></div>
+                <div class="toggle-option" id="opt-air">In Air</div>
+                <div class="toggle-option" id="opt-ground">On Ground</div>
+            </label>
+        </div>
+    </div>
+
+    <button id="toggle-filters-btn">Filters</button>
+
+    <div id="filter-panel">
+        <div class="filter-group">
+            <label>Altitude (ft)</label>
+            <div class="filter-inputs">
+                <input type="number" id="f-min-alt" placeholder="Min (0)" value="0">
+                <span style="color:#aaa;">-</span>
+                <input type="number" id="f-max-alt" placeholder="Max (60000)" value="60000">
+            </div>
+        </div>
+        <div class="filter-group">
+            <label>Speed - kts</label>
+            <div class="filter-inputs">
+                <input type="number" id="f-min-speed" placeholder="Min (0)" value="0">
+                <span style="color:#aaa;">-</span>
+                <input type="number" id="f-max-speed" placeholder="Max (1000)" value="1000">
+            </div>
+        </div>
+        <div class="filter-group">
+            <label>Country (Origin)</label>
+            <div class="filter-inputs">
+                <select id="f-country" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.5); color: white; outline: none; font-size: 12px; text-align: center;">
+                    <option value="">All Countries</option>
+                </select>
+            </div>
+        </div>
+        <div class="filter-actions">
+            <button id="btn-reset-filters" class="filter-btn btn-reset">Reset</button>
+            <button id="btn-apply-filters" class="filter-btn btn-apply">Apply</button>
+        </div>
+    </div>
+    
+    <div id="search-container">
+        <input type="text" id="search-input" placeholder="Search ICAO24 or Callsign" autocomplete="off">
+        <div id="search-results"></div>
+    </div>
+    
+    <div id="info-panel">
+        <div id="info-content"></div>
+    </div>
+
+    <div id="counter">
+        Visible Flights: <span id="visible-count">0</span> / Total Flights: <span id="flight-count">0</span>
+    </div>
+    
+    <div id="legend">
+        <div style="font-weight: 700; margin-bottom: 8px;">Altitude (ft)</div>
+        <div class="legend-item"><div class="legend-color" style="background: #ff4757;"></div> &lt; 5,000</div>
+        <div class="legend-item"><div class="legend-color" style="background: #ffa502;"></div> 5,000 - 15,000</div>
+        <div class="legend-item"><div class="legend-color" style="background: #eccc68;"></div> 15,000 - 25,000</div>
+        <div class="legend-item"><div class="legend-color" style="background: #7bed9f;"></div> 25,000 - 35,000</div>
+        <div class="legend-item"><div class="legend-color" style="background: #1e90ff;"></div> 35,000 - 40,000</div>
+        <div class="legend-item"><div class="legend-color" style="background: #9c88ff;"></div> &gt; 40,000</div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="/script.js"></script>
+</body>
+</html>
