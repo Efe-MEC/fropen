@@ -151,18 +151,26 @@ function updateInfoPanel(flight) {
         
         <div class="history-section">
             <div class="info-row" style="margin-top: 15px; margin-bottom: 5px;">
-                <span class="info-label">History Date</span>
+                <span class="info-label">Track History Date</span>
             </div>
             <div class="history-inputs">
                 <input type="date" id="history-date-input" class="history-date-picker">
-                <button class="filter-btn btn-apply" id="btn-search-history" onclick="onSearchHistoryClick('${flight.icao24}')">Arat</button>
+                <button class="filter-btn btn-apply" id="btn-search-history" onclick="onSearchHistoryClick('${flight.icao24}')">Search</button>
             </div>
             <div style="margin-top: 10px;">
-                <button class="filter-btn btn-apply" onclick="drawHistoryTrack('${flight.icao24}')" style="width: 100%;">Show History</button>
+                <button class="filter-btn btn-apply" onclick="drawHistoryTrack('${flight.icao24}')" style="width: 100%;">Show Full History</button>
             </div>
         </div>
     `;
     document.getElementById("info-content").innerHTML = html;
+
+    flatpickr("#history-date-input", {
+        altInput: true,
+        altFormat: "d-m-Y",
+        dateFormat: "Y-m-d",
+        defaultDate: "today"
+    });
+
     panel.style.display = "block";
 }
 
@@ -174,6 +182,9 @@ async function onSearchHistoryClick(icao24) {
         alert("Please select a date!");
         return;
     }
+
+    const [year, month, day] = selectedDate.split('-');
+    const displayDate = `${day}-${month}-${year}`;
 
     try {
         const response = await fetch(`/api/flights/${icao24}/history-by-date?date=${selectedDate}`);
@@ -194,7 +205,7 @@ async function onSearchHistoryClick(icao24) {
             }
             currentTrackLayer.addTo(map);
         } else {
-            alert(`${selectedDate} date for ${icao24} flight not found.`);
+            alert(`${displayDate} date for ${icao24} flight not found.`);
         }
     } catch (error) {
         console.error("Error loading history track:", error);
@@ -320,8 +331,7 @@ function renderVisibleFlights() {
 
         const altitudeFt = (flight.altitude || 0) * 3.28084;
         const speedKts = (flight.velocity || 0) * 1.94384;
-        
-        // Ülke kontrolü (küçük harfe çevrilmiş şekilde)
+
         if (filterCountry) {
             const country = (flight.origin_country || "").toLowerCase();
             if (country !== filterCountry) continue;

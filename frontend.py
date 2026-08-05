@@ -10,6 +10,9 @@ from aiokafka import AIOKafkaConsumer
 from contextlib import asynccontextmanager
 import time
 from aiokafka import AIOKafkaConsumer, TopicPartition
+from concurrent.futures import ProcessPoolExecutor
+from functools import partial
+import pandas as pd
 
 MONGO_URI = os.getenv("MONGO_URI")
 KAFKA_BOOTSTRAP_SERVERS = "kafka1:29092,kafka2:29092,kafka3:29092"
@@ -91,6 +94,17 @@ async def consume_kafka_background():
                     active_connections.remove(dead)
     finally:
         await consumer.stop()
+
+def _process_single_parquet(file_path, icao24):
+    try:
+        df = pd.read_parquet(file_path)
+        if "icao24" in df.columns:
+            filtered_df = df[df["icao24"] == icao24]
+            if not filtered_df.empty:
+                return filtered_df[["timestamp", "latitude", "longitude", "altitude"]].to_dict('records')
+    except Exception as e:
+        print(f"[API] Error reading Parquet file ({file_path}): {e}")
+    return []
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -185,9 +199,6 @@ def get_flight_track(icao24: str):
         "path": path
     }
 
-import pandas as pd
-from datetime import datetime, timezone
-
 @app.get("/api/flights/{icao24}/history-by-date")
 def get_flight_history_by_date(icao24: str, date: str = Query(...)):
     try:
@@ -263,20 +274,61 @@ def get_flight_history_by_date(icao24: str, date: str = Query(...)):
 
 @app.get("/api/flights/{icao24}/history")
 def get_flight_history(icao24: str):
-    cursor = raw_flights.find({"icao24": icao24}).sort("timestamp", 1)
-    
-    path = []
+    path_points = []
+
+    cursor = raw_flights.find({"icao24": icao24})
     for doc in cursor:
         lat = doc.get("latitude")
         lon = doc.get("longitude")
         alt = doc.get("altitude", 0.0) or 0.0
+        ts = doc.get("timestamp", 0)
         
         if lat is not None and lon is not None:
-            path.append([float(lat), float(lon), float(alt)])
+            path_points.append({
+                "timestamp": ts, 
+                "lat": float(lat), 
+                "lon": float(lon), 
+                "alt": float(alt)
+            })
+
+    archive_dir = "/app/archive"
+    parquet_files = []
+    if os.path.exists(archive_dir):
+        for root, _, files in os.walk(archive_dir):
+            for file in files:
+                if file.endswith(".parquet"):
+                    parquet_files.append(os.path.join(root, file))
+    
+    if parquet_files:
+        print(f"[API] Searching full history for {icao24} in {len(parquet_files)} parquet files via multiprocessing...")
+
+        worker = partial(_process_single_parquet, icao24=icao24)
+
+        with ProcessPoolExecutor() as executor:
+            results = executor.map(worker, parquet_files)
+            
+            for res in results:
+                for row in res:
+                    ts = row.get("timestamp", 0)
+                    lat = row.get("latitude")
+                    lon = row.get("longitude")
+                    alt = row.get("altitude", 0.0) or 0.0
+                    
+                    if pd.notna(lat) and pd.notna(lon):
+                        path_points.append({
+                            "timestamp": ts, 
+                            "lat": float(lat), 
+                            "lon": float(lon), 
+                            "alt": float(alt) if pd.notna(alt) else 0.0
+                        })
+
+    path_points.sort(key=lambda x: x["timestamp"])
+    path = [[p["lat"], p["lon"], p["alt"]] for p in path_points]
             
     return {
         "icao24": icao24,
-        "path": path
+        "path": path,
+        "total_points": len(path)
     }
 
 @app.websocket("/ws/flights")
