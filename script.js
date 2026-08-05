@@ -2,12 +2,52 @@ const API_URL = "/api/flights";
 const myRenderer = L.canvas({ padding: 0.5 });
 
 const map = L.map("map", {
-    preferCanvas: true, zoomControl: true, renderer: myRenderer
+    preferCanvas: true, zoomControl: false, renderer: myRenderer
 }).setView([39.0, 35.0], 5);
 
-L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+L.control.zoom({ position: 'topright' }).addTo(map);
+
+let currentTileLayer = L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
     maxZoom: 18, subdomains: 'abcd',
 }).addTo(map);
+
+L.Control.ThemeToggle = L.Control.extend({
+    options: { position: 'topright' },
+    onAdd: function(map) {
+        const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+        const button = L.DomUtil.create('a', 'theme-toggle-btn', container);
+        
+        button.innerHTML = '🌙';
+        button.href = '#';
+        button.title = 'Toggle Theme';
+        button.style.fontSize = '16px';
+        button.style.lineHeight = '30px';
+        button.style.textAlign = 'center';
+        button.style.textDecoration = 'none';
+
+        L.DomEvent.disableClickPropagation(button);
+        
+        L.DomEvent.on(button, 'click', function(e) {
+            L.DomEvent.preventDefault(e);
+            
+            const body = document.body;
+            body.classList.toggle("light-mode");
+            const isLight = body.classList.contains("light-mode");
+            button.innerHTML = isLight ? "☀️" : "🌙";
+            
+            map.removeLayer(currentTileLayer);
+            const tileUrl = isLight 
+                ? "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" 
+                : "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+                
+            currentTileLayer = L.tileLayer(tileUrl, { maxZoom: 18, subdomains: 'abcd' }).addTo(map);
+        });
+
+        return container;
+    }
+});
+
+map.addControl(new L.Control.ThemeToggle());
 
 let allFlightsData = [];
 const aircraftMarkers = new Map();

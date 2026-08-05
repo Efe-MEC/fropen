@@ -13,6 +13,8 @@ from aiokafka import AIOKafkaConsumer, TopicPartition
 from concurrent.futures import ProcessPoolExecutor
 from functools import partial
 import pandas as pd
+import pyarrow.dataset as ds
+import pyarrow.compute as pc
 
 MONGO_URI = os.getenv("MONGO_URI")
 KAFKA_BOOTSTRAP_SERVERS = "kafka1:29092,kafka2:29092,kafka3:29092"
@@ -297,35 +299,31 @@ def get_flight_history(icao24: str):
             })
 
     archive_dir = "/app/archive"
-    parquet_files = []
-    if os.path.exists(archive_dir):
-        for root, _, files in os.walk(archive_dir):
-            for file in files:
-                if file.endswith(".parquet"):
-                    parquet_files.append(os.path.join(root, file))
     
-    if parquet_files:
-        print(f"[API] Searching full history for {icao24} in {len(parquet_files)} parquet files via multiprocessing...")
-
-        worker = partial(_process_single_parquet, icao24=icao24)
-
-        with ProcessPoolExecutor() as executor:
-            results = executor.map(worker, parquet_files)
+    if os.path.exists(archive_dir):
+        try:
+            dataset = ds.dataset(archive_dir, format="parquet")
             
-            for res in results:
-                for row in res:
-                    ts = row.get("timestamp", 0)
-                    lat = row.get("latitude")
-                    lon = row.get("longitude")
-                    alt = row.get("altitude", 0.0) or 0.0
-                    
-                    if pd.notna(lat) and pd.notna(lon):
-                        path_points.append({
-                            "timestamp": ts, 
-                            "lat": float(lat), 
-                            "lon": float(lon), 
-                            "alt": float(alt) if pd.notna(alt) else 0.0
-                        })
+            table = dataset.to_table(
+                columns=["timestamp", "latitude", "longitude", "altitude"],
+                filter=(pc.field("icao24") == icao24)
+            )
+
+            df_filtered = table.to_pandas()
+            for _, row in df_filtered.iterrows():
+                lat = row.get("latitude")
+                lon = row.get("longitude")
+                alt = row.get("altitude", 0.0)
+                
+                if pd.notna(lat) and pd.notna(lon):
+                    path_points.append({
+                        "timestamp": row.get("timestamp", 0), 
+                        "lat": float(lat), 
+                        "lon": float(lon), 
+                        "alt": float(alt) if pd.notna(alt) else 0.0
+                    })
+        except Exception as e:
+            print(f"[API] Error reading dataset from {archive_dir}: {e}")
 
     path_points.sort(key=lambda x: x["timestamp"])
     path = [[p["lat"], p["lon"], p["alt"]] for p in path_points]

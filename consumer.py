@@ -62,7 +62,7 @@ def main():
     try:
         for message in consumer:
             try:
-                flight = message.value
+                flight = json.loads(message.value.decode("utf-8"))
                 icao24 = flight.get("icao24")
                 unix_ts = flight.get("timestamp")
                 dt = datetime.fromtimestamp(unix_ts, tz=timezone.utc) if unix_ts else datetime.now(timezone.utc)
