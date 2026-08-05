@@ -24,6 +24,9 @@ def setup_database(db):
 
     session_collection.create_index([("icao24", ASCENDING), ("is_active", ASCENDING)])
 
+    raw_collection.create_index([("created_at", ASCENDING)], expireAfterSeconds=172800)
+    session_collection.create_index([("last_seen", ASCENDING)], expireAfterSeconds=172800)
+
     return raw_collection, session_collection
 
 def main():
@@ -59,17 +62,15 @@ def main():
     try:
         for message in consumer:
             try:
-                flight = json.loads(message.value.decode("utf-8"))
-
+                flight = message.value
                 icao24 = flight.get("icao24")
-                if not icao24:
-                    continue
-
-                raw_collection.insert_one(flight.copy())
-
                 unix_ts = flight.get("timestamp")
                 dt = datetime.fromtimestamp(unix_ts, tz=timezone.utc) if unix_ts else datetime.now(timezone.utc)
                 
+                flight_to_insert = flight.copy()
+                flight_to_insert["created_at"] = dt
+                raw_collection.insert_one(flight_to_insert)
+
                 lat = flight.get("latitude")
                 lon = flight.get("longitude")
                 alt = flight.get("altitude", 0.0) or 0.0
