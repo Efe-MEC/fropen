@@ -165,6 +165,11 @@ def get_flights():
         "flights": flights,
     }
 
+@app.get("/api/airports")
+def get_airports():
+    airports = list(db["airports"].find({}, {"_id": 0}))
+    return {"airports": airports}
+
 @app.get("/api/flights/search")
 def search_flights(q: str = Query(..., min_length=1)):
     search_term = q.strip().lower()

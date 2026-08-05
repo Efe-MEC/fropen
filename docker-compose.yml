@@ -191,5 +191,17 @@ services:
     volumes:
       - ./archive:/app/archive
 
+  airport-seeder:
+    build: .
+    container_name: airport_seeder
+    command: python -u seed_airports.py
+    environment:
+      - MONGO_URI=${MONGO_URI}
+    depends_on:
+      mongodb:
+        condition: service_started
+    networks:
+      - data-pipeline-net
+
 volumes:
   mongo_data:

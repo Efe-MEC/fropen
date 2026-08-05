@@ -175,3 +175,27 @@ html, body {
     flex: 1;
     padding: 9px 10px;
 }
+
+.custom-airport-icon {
+    background: rgba(46, 189, 89, 0.2);
+    border: 2px solid #2ebd59;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    box-shadow: 0 0 10px rgba(46, 189, 89, 0.5);
+    backdrop-filter: blur(2px);
+    transition: transform 0.2s;
+}
+
+.custom-airport-icon:hover {
+    transform: scale(1.2);
+    background: rgba(46, 189, 89, 0.5);
+}
+
+.custom-airport-icon svg {
+    fill: #ffffff;
+    width: 14px;
+    height: 14px;
+}

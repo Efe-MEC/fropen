@@ -435,3 +435,46 @@ setInterval(() => {
         scheduleRenderVisibleFlights();
     }
 }, 10000);
+
+const airportLayer = L.layerGroup().addTo(map);
+
+async function fetchAndRenderAirports() {
+    try {
+        const response = await fetch('/api/airports');
+        if (!response.ok) throw new Error("HTTP " + response.status);
+        const data = await response.json();
+        
+        data.airports.forEach(apt => {
+            let radius = 2;
+            let color = '#aaaaaa';
+            
+            if (apt.type === 'large_airport') {
+                radius = 4;
+                color = '#2ebd59';
+            } else if (apt.type === 'medium_airport') {
+                radius = 3;
+                color = '#f39c12';
+            }
+
+            const popupContent = `
+                <div style="font-size: 14px; color: #191919;">
+                    <b style="font-size: 16px;">${apt.name}</b><br>
+                    <b>ICAO:</b> ${apt.icao} <br>
+                    <b>IATA:</b> ${apt.iata || 'N/A'} <br>
+                    <b>Type:</b> ${apt.type.replace('_', ' ')}
+                </div>
+            `;
+            
+            L.circleMarker([apt.lat, apt.lon], {
+                renderer: myRenderer,
+                radius: radius,
+                color: color,
+                weight: 1,
+                fillColor: color,
+                fillOpacity: 0.7
+            }).bindPopup(popupContent, { className: 'airport-popup' }).addTo(airportLayer);
+        });
+    } catch (error) {}
+}
+
+fetchAndRenderAirports();
