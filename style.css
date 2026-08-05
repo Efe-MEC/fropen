@@ -199,3 +199,10 @@ html, body {
     width: 14px;
     height: 14px;
 }
+
+.legend-circle {
+    border-radius: 50%;
+    margin-right: 8px;
+    border: 1px solid #191919;
+    opacity: 0.8;
+}

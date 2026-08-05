@@ -43,14 +43,23 @@ document.getElementById("toggle-filters-btn").addEventListener("click", () => {
     filterPanel.style.display = filterPanel.style.display === "none" || filterPanel.style.display === "" ? "block" : "none";
 });
 
+let filterAptLarge = true;
+let filterAptMedium = true;
+let filterAptSmall = false;
+
 document.getElementById("btn-apply-filters").addEventListener("click", () => {
     filterMinAlt = Number(document.getElementById("f-min-alt").value) || 0;
     filterMaxAlt = Number(document.getElementById("f-max-alt").value) || 60000;
     filterMinSpeed = Number(document.getElementById("f-min-speed").value) || 0;
     filterMaxSpeed = Number(document.getElementById("f-max-speed").value) || 1000;
     filterCountry = document.getElementById("f-country").value.trim().toLowerCase();
+    filterAptLarge = document.getElementById("f-apt-large").checked;
+    filterAptMedium = document.getElementById("f-apt-medium").checked;
+    filterAptSmall = document.getElementById("f-apt-small").checked;
+    
     filterPanel.style.display = "none";
     scheduleRenderVisibleFlights();
+    renderAirportsFromData();
 });
 
 document.getElementById("btn-reset-filters").addEventListener("click", () => {
@@ -59,10 +68,18 @@ document.getElementById("btn-reset-filters").addEventListener("click", () => {
     document.getElementById("f-min-speed").value = 0;
     document.getElementById("f-max-speed").value = 1000;
     document.getElementById("f-country").value = "";
+    document.getElementById("f-apt-large").checked = true;
+    document.getElementById("f-apt-medium").checked = true;
+    document.getElementById("f-apt-small").checked = false;
+    
     filterMinAlt = 0; filterMaxAlt = 60000;
     filterMinSpeed = 0; filterMaxSpeed = 1000;
     filterCountry = "";
+    
+    filterAptLarge = true; filterAptMedium = true; filterAptSmall = false;
+    
     scheduleRenderVisibleFlights();
+    renderAirportsFromData();
 });
 
 function getAltitudeColor(altitudeMeters) {
@@ -150,7 +167,7 @@ function updateInfoPanel(flight) {
         <div class="info-row"><span class="info-label">Last Updated</span> <span class="info-value">${flight.last_updated} UTC</span></div>
         
         <div class="history-section">
-            <div class="info-row" style="margin-top: 15px; margin-bottom: 5px;">
+            <div class="info-row" style="margin-top: 10px; margin-bottom: 10px;">
                 <span class="info-label">Track History Date</span>
             </div>
             <div class="history-inputs">
@@ -437,6 +454,60 @@ setInterval(() => {
 }, 10000);
 
 const airportLayer = L.layerGroup().addTo(map);
+let allAirportsData = [];
+
+function renderAirportsFromData() {
+    airportLayer.clearLayers();
+    const currentZoom = map.getZoom();
+    const zoomScale = currentZoom / 8;
+    
+    allAirportsData.forEach(apt => {
+        let radius = 1;
+        let color = '#ffffff';
+        let isVisible = false;
+        
+        if (apt.type === 'large_airport') {
+            radius = Math.max(1.5, 2 * zoomScale);
+            color = '#fe7f9c';
+            if (filterAptLarge) isVisible = true;
+        } else if (apt.type === 'medium_airport') {
+            radius = Math.max(1.2, 1.5 * zoomScale);
+            color = '#fec5e5';
+            if (filterAptMedium) isVisible = true;
+        } else if (apt.type === 'small_airport') {
+            radius = Math.max(1, 1 * zoomScale);
+            color = '#ffffff';
+            if (filterAptSmall) isVisible = true;
+        }
+
+        if (!isVisible) return;
+
+        const formattedType = apt.type
+            .split('_')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+            .join(' ');
+
+        const popupContent = `
+            <div style="font-size: 14px; color: #191919;">
+                <b style="font-size: 16px;">${apt.name}</b><br>
+                <b>ICAO:</b> ${apt.icao} <br>
+                <b>IATA:</b> ${apt.iata || 'N/A'} <br>
+                <b>Type:</b> ${formattedType}
+            </div>
+        `;
+        
+        L.circleMarker([apt.lat, apt.lon], {
+            renderer: myRenderer,
+            radius: radius, 
+            color: color,
+            weight: 0.5,
+            fillColor: color,
+            fillOpacity: 0.8
+        }).bindPopup(popupContent, { className: 'airport-popup' }).addTo(airportLayer);
+    });
+}
+
+map.on("zoomend", renderAirportsFromData);
 
 async function fetchAndRenderAirports() {
     try {
@@ -444,37 +515,11 @@ async function fetchAndRenderAirports() {
         if (!response.ok) throw new Error("HTTP " + response.status);
         const data = await response.json();
         
-        data.airports.forEach(apt => {
-            let radius = 2;
-            let color = '#aaaaaa';
-            
-            if (apt.type === 'large_airport') {
-                radius = 4;
-                color = '#2ebd59';
-            } else if (apt.type === 'medium_airport') {
-                radius = 3;
-                color = '#f39c12';
-            }
-
-            const popupContent = `
-                <div style="font-size: 14px; color: #191919;">
-                    <b style="font-size: 16px;">${apt.name}</b><br>
-                    <b>ICAO:</b> ${apt.icao} <br>
-                    <b>IATA:</b> ${apt.iata || 'N/A'} <br>
-                    <b>Type:</b> ${apt.type.replace('_', ' ')}
-                </div>
-            `;
-            
-            L.circleMarker([apt.lat, apt.lon], {
-                renderer: myRenderer,
-                radius: radius,
-                color: color,
-                weight: 1,
-                fillColor: color,
-                fillOpacity: 0.7
-            }).bindPopup(popupContent, { className: 'airport-popup' }).addTo(airportLayer);
-        });
-    } catch (error) {}
+        allAirportsData = data.airports;
+        renderAirportsFromData();
+    } catch (error) {
+        console.error("No airports data available:", error);
+    }
 }
 
 fetchAndRenderAirports();

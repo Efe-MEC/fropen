@@ -56,6 +56,14 @@
                 </select>
             </div>
         </div>
+        <div class="filter-group">
+            <label>Airports</label>
+            <div style="display: flex; gap: 10px; font-size: 12px; color: white;">
+                <label style="display:flex; align-items:center; gap:4px; font-weight:normal;"><input type="checkbox" id="f-apt-large" checked> Large</label>
+                <label style="display:flex; align-items:center; gap:4px; font-weight:normal;"><input type="checkbox" id="f-apt-medium"> Medium</label>
+                <label style="display:flex; align-items:center; gap:4px; font-weight:normal;"><input type="checkbox" id="f-apt-small"> Small</label>
+            </div>
+        </div>
         <div class="filter-actions">
             <button id="btn-reset-filters" class="filter-btn btn-reset">Reset</button>
             <button id="btn-apply-filters" class="filter-btn btn-apply">Apply</button>
@@ -83,6 +91,10 @@
         <div class="legend-item"><div class="legend-color" style="background: #7bed9f;"></div> 25,000 - 35,000</div>
         <div class="legend-item"><div class="legend-color" style="background: #1e90ff;"></div> 35,000 - 40,000</div>
         <div class="legend-item"><div class="legend-color" style="background: #9c88ff;"></div> &gt; 40,000</div>
+        <div style="font-weight: 700; margin-top: 12px; margin-bottom: 8px;">Airports</div>
+        <div class="legend-item"><div class="legend-circle" style="background: #fe7f9c; width: 10px; height: 10px;"></div> Large</div>
+        <div class="legend-item"><div class="legend-circle" style="background: #fec5e5; width: 10px; height: 10px;"></div> Medium</div>
+        <div class="legend-item"><div class="legend-circle" style="background: #ffffff; width: 10px; height: 10px;"></div> Small</div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
