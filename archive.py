@@ -62,7 +62,7 @@ def job():
 if __name__ == "__main__":
     print("Archiver started.")
     archive_yesterday_data()
-    schedule.every().day.at("00:05").do(job)
+    schedule.every().day.at("03:05").do(job)
     
     print("Timer setted.")
     while True:
